@@ -9,10 +9,16 @@ key architectural decisions.
 
 ## Slice 1 — walking skeleton
 
-The thinnest end-to-end path: parse (PyMuPDF) → naive chunk → embed → FAISS flat index +
+The thinnest end-to-end path: parse (PyMuPDF) → chunk → embed → FAISS flat index +
 SQLite metadata → retrieve → prompt (context + citation instruction) → generate → answer
 with cited sources, shown in a Streamlit chat. Heavier, more faithful implementations of each
 box arrive in later slices. The CLIP image-encoder / image-index branch is a documented stub.
+
+Chunking is **structure-aware** (Slice 2): it groups a heading with its body, keeps tables
+intact, never merges across pages (page-accurate citations), and splits oversized content to a
+token budget (tiktoken) with overlap. Until the AI-based parser (Slice 8) supplies real
+headings/tables, the budget defaults small (`chunk_max_tokens=128`) to keep retrieval precise —
+bigger chunks dilute the signal when every block is just a page of body text.
 
 ## Setup
 

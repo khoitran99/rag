@@ -6,7 +6,7 @@ fakes instead. The CLI and the Streamlit UI both build through here.
 
 from __future__ import annotations
 
-from rag.chunker import NaiveChunker
+from rag.chunker import Chunker
 from rag.config import Config
 from rag.embedder import OllamaEmbedder
 from rag.generator import OllamaGenerator
@@ -30,7 +30,9 @@ def run_ingestion(config: Config) -> int:
     store = MetadataStore(config.db_path)
     pipeline = IngestionPipeline(
         parser=PdfParser(),
-        chunker=NaiveChunker(chunk_size=config.chunk_size, overlap=config.chunk_overlap),
+        chunker=Chunker(
+            max_tokens=config.chunk_max_tokens, overlap_tokens=config.chunk_overlap_tokens
+        ),
         embedder=_embedder(config),
         index=index,
         store=store,

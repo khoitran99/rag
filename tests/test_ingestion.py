@@ -1,7 +1,7 @@
 import fitz  # PyMuPDF
 
 from rag.parser import PdfParser
-from rag.chunker import NaiveChunker
+from rag.chunker import Chunker
 from rag.vector_index import VectorIndex
 from rag.metadata_store import MetadataStore
 from rag.ingestion import IngestionPipeline
@@ -27,7 +27,7 @@ def test_ingest_populates_metadata_with_source_document_and_page(tmp_path):
     store = MetadataStore(tmp_path / "meta.sqlite")
     pipeline = IngestionPipeline(
         parser=PdfParser(),
-        chunker=NaiveChunker(chunk_size=200, overlap=20),
+        chunker=Chunker(max_tokens=512, overlap_tokens=64),
         embedder=embedder,
         index=VectorIndex(dim=embedder.dim),
         store=store,
