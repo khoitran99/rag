@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from rag.models import Chunk
+from rag.models import LayoutBlock
 
 
 class IngestionPipeline:
@@ -22,21 +22,11 @@ class IngestionPipeline:
     def ingest(self, folder: str | Path) -> int:
         """Index every PDF in `folder`. Returns the number of chunks indexed."""
         folder = Path(folder)
-        chunks: list[Chunk] = []
-        next_id = 0
+        blocks: list[LayoutBlock] = []
         for pdf_path in sorted(folder.glob("*.pdf")):
-            for page in self._parser.parse(pdf_path):
-                for piece in self._chunker.split(page.text):
-                    chunks.append(
-                        Chunk(
-                            chunk_id=next_id,
-                            document=pdf_path.name,
-                            page=page.page,
-                            text=piece,
-                        )
-                    )
-                    next_id += 1
+            blocks.extend(self._parser.parse(pdf_path))
 
+        chunks = self._chunker.chunk(blocks)
         if not chunks:
             return 0
 

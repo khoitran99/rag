@@ -23,8 +23,11 @@ class Config:
     llm_model: str = "qwen2.5:7b-instruct"
 
     top_k: int = 5
-    chunk_size: int = 500
-    chunk_overlap: int = 50
+    # Small chunks keep retrieval precise while the quick-path parser emits one body block
+    # per page (no real structure). Once the AI-based parser (Slice 8) supplies real headings
+    # and tables, raise this toward 256-512 so chunks become coherent sections.
+    chunk_max_tokens: int = 128
+    chunk_overlap_tokens: int = 16
 
     ollama_host: str = "http://localhost:11434"
 
@@ -41,7 +44,7 @@ class Config:
             embed_dim=int(_get("RAG_EMBED_DIM", cls.embed_dim)),
             llm_model=_get("RAG_LLM_MODEL", cls.llm_model),
             top_k=int(_get("RAG_TOP_K", cls.top_k)),
-            chunk_size=int(_get("RAG_CHUNK_SIZE", cls.chunk_size)),
-            chunk_overlap=int(_get("RAG_CHUNK_OVERLAP", cls.chunk_overlap)),
+            chunk_max_tokens=int(_get("RAG_CHUNK_MAX_TOKENS", cls.chunk_max_tokens)),
+            chunk_overlap_tokens=int(_get("RAG_CHUNK_OVERLAP_TOKENS", cls.chunk_overlap_tokens)),
             ollama_host=_get("RAG_OLLAMA_HOST", cls.ollama_host),
         )
