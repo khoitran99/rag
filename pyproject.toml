@@ -1,0 +1,33 @@
+[project]
+name = "local-rag"
+version = "0.1.0"
+description = "Local, fully-offline RAG (ChatPDF) pipeline over a documents folder"
+requires-python = ">=3.12"
+dependencies = [
+    "pymupdf",
+    "faiss-cpu",
+    "numpy",
+]
+
+[project.optional-dependencies]
+# Real-run adapters and UI; not needed for the test suite (which uses fakes).
+runtime = [
+    "ollama",
+    "streamlit",
+]
+dev = [
+    "pytest",
+]
+
+[project.scripts]
+rag = "rag.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["rag"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
