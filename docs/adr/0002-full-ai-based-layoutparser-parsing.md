@@ -4,7 +4,9 @@ Date: 2026-06-08
 
 ## Status
 
-Accepted
+Accepted — **amended 2026-06-11** (Slice 3): the Detectron2 risk below materialized on
+Apple Silicon, so the documented fallback was invoked. The AI-based branch now ships on
+**Docling** rather than LayoutParser/Detectron2. See "Amendment" below.
 
 ## Context
 
@@ -40,3 +42,21 @@ and runtime cost as the price of fidelity.
   per new/changed document rather than every run, which keeps it tolerable.
 - If setup proves intractable, the fallback is Docling/Marker (still AI-based, offline) or a
   PyMuPDF-with-OCR-fallback hybrid — a contained change isolated to the parsing module.
+
+## Amendment (2026-06-11, Slice 3)
+
+Detectron2 could not be installed on the target Apple-Silicon Mac, exactly as the risk above
+predicted. We invoked the documented fallback: the AI-based parsing branch now runs on
+**Docling** (offline layout+OCR, CPU, installs cleanly), not LayoutParser/Detectron2.
+
+What stayed faithful: the architecture is unchanged. The lecture's branch — *layout detection →
+OCR → structured blocks (titles, paragraphs, tables, reading order)* — is realized intact; only
+the model behind it changed. To keep that swap contained and the logic testable, detection sits
+behind a `LayoutDetector` seam returning raw `DetectedRegion`s, and a deep `AiLayoutParser` maps
+those onto `LayoutBlock`s (label→kind, column-aware reading order, source stamping). The parser
+is unit-tested with a fake detector; the Docling adapter is heavy/non-deterministic and verified
+manually (`RAG_PARSER=ai`), mirroring how the Ollama adapters are treated.
+
+LayoutParser/Detectron2 remains the lecture-verbatim option for anyone on Linux/CUDA: drop in an
+alternate `LayoutDetector` implementation, no downstream changes. The CLIP image branch is still
+a documented stub, untouched here.
