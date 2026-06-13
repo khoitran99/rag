@@ -19,6 +19,11 @@ runtime = [
 dev = [
     "pytest",
 ]
+# AI-based parser (Slice 3 / ADR-0002): Docling layout+OCR, offline on CPU. Heavy; opt in with
+# RAG_PARSER=ai. Stands in for the lecture's LayoutParser (no Apple-Silicon Detectron2 wheels).
+ai = [
+    "docling",
+]
 
 [project.scripts]
 rag = "rag.cli:main"

@@ -1,10 +1,10 @@
-"""Document parsing.
+"""Document parsing — the rule-based "quick path".
 
-Slice 1 used the rule-based "quick path": PyMuPDF text extraction per page. It now emits
-``LayoutBlock``s (one ``body`` block per page) so the structure-aware Chunker has a stable
-input shape. Slice 8 replaces this with the AI-based LayoutParser (see ADR-0002), which fills
-in real ``heading`` and ``table`` blocks — without changing this ``parse(pdf) -> [LayoutBlock]``
-contract.
+PyMuPDF text extraction per page, emitting ``LayoutBlock``s (one ``body`` block per page) so the
+structure-aware Chunker has a stable input shape. This is the default, dependency-light parser.
+The AI-based parser (``rag.ai_parser.AiLayoutParser``, see ADR-0002) is a sibling that fills in
+real ``heading`` and ``table`` blocks; both honour the same ``parse(pdf) -> [LayoutBlock]``
+contract, and ``factory`` picks between them via ``Config.parser`` ("quick" | "ai").
 """
 
 from __future__ import annotations

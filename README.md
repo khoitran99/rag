@@ -16,9 +16,32 @@ box arrive in later slices. The CLIP image-encoder / image-index branch is a doc
 
 Chunking is **structure-aware** (Slice 2): it groups a heading with its body, keeps tables
 intact, never merges across pages (page-accurate citations), and splits oversized content to a
-token budget (tiktoken) with overlap. Until the AI-based parser (Slice 8) supplies real
-headings/tables, the budget defaults small (`chunk_max_tokens=128`) to keep retrieval precise —
-bigger chunks dilute the signal when every block is just a page of body text.
+token budget (tiktoken) with overlap. Until the AI-based parser supplies real headings/tables,
+the budget defaults small (`chunk_max_tokens=128`) to keep retrieval precise — bigger chunks
+dilute the signal when every block is just a page of body text.
+
+## Slice 3 — AI-based parser (opt-in)
+
+The lecture's AI-based parsing branch (layout detection → OCR → structured blocks) is realized
+with **Docling** (offline, CPU) instead of LayoutParser/Detectron2, which has no Apple-Silicon
+wheels — see [ADR-0002](docs/adr/0002-full-ai-based-layoutparser-parsing.md). Detection sits
+behind a `LayoutDetector` seam; the deep, unit-tested `AiLayoutParser` maps raw regions onto
+`LayoutBlock`s (label→kind, column-aware reading order, source stamping) and feeds the same
+Chunker unchanged. It is opt-in because Docling is a heavy dependency a human installs:
+
+```bash
+.venv/bin/pip install -e ".[ai]"                        # installs Docling (heavy)
+OMP_NUM_THREADS=1 RAG_PARSER=ai .venv/bin/rag ingest     # layout detection + OCR
+```
+
+**`OMP_NUM_THREADS=1` is required for AI ingest.** Docling's `torch` and `faiss` each bundle
+their own OpenMP runtime; with both live in one process they race and intermittently segfault
+(exit 139). Serializing OpenMP avoids it. Query time doesn't load `torch`, so plain
+`rag query` needs no such flag. Expect AI ingest to be slow (~3–4 min/PDF on CPU, plus a
+one-time model download on first run).
+
+With real headings/tables you can raise `RAG_CHUNK_MAX_TOKENS` toward 256–512 for more coherent,
+section-level chunks. The CLIP image-encoder branch remains a documented stub.
 
 ## Setup
 

@@ -9,7 +9,7 @@ from dataclasses import dataclass
 class LayoutBlock:
     """A structural unit of a parsed Document: a heading, a body paragraph, or a table.
 
-    The quick-path parser emits everything as ``kind="body"``; the AI-based parser (Slice 8)
+    The quick-path parser emits everything as ``kind="body"``; the AI-based parser (AiLayoutParser)
     fills in real headings and tables. Each block self-describes its source so chunking can
     stay a pure ``[LayoutBlock] -> [Chunk]`` function.
     """
