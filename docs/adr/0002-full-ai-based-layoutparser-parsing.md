@@ -60,3 +60,9 @@ manually (`RAG_PARSER=ai`), mirroring how the Ollama adapters are treated.
 LayoutParser/Detectron2 remains the lecture-verbatim option for anyone on Linux/CUDA: drop in an
 alternate `LayoutDetector` implementation, no downstream changes. The CLIP image branch is still
 a documented stub, untouched here.
+
+**Runtime gotcha found in manual verification:** Docling's `torch` and `faiss` each bundle their
+own OpenMP runtime; with both live in the ingest process they race and intermittently segfault
+(exit 139). Running AI ingest with `OMP_NUM_THREADS=1` serializes OpenMP and resolves it. This is
+documented in the README's AI-ingest command. Query time loads `faiss` but not `torch`, so it is
+unaffected.

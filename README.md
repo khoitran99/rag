@@ -30,9 +30,15 @@ behind a `LayoutDetector` seam; the deep, unit-tested `AiLayoutParser` maps raw 
 Chunker unchanged. It is opt-in because Docling is a heavy dependency a human installs:
 
 ```bash
-.venv/bin/pip install -e ".[ai]"     # installs Docling
-RAG_PARSER=ai .venv/bin/rag ingest   # parse with layout detection + OCR
+.venv/bin/pip install -e ".[ai]"                        # installs Docling (heavy)
+OMP_NUM_THREADS=1 RAG_PARSER=ai .venv/bin/rag ingest     # layout detection + OCR
 ```
+
+**`OMP_NUM_THREADS=1` is required for AI ingest.** Docling's `torch` and `faiss` each bundle
+their own OpenMP runtime; with both live in one process they race and intermittently segfault
+(exit 139). Serializing OpenMP avoids it. Query time doesn't load `torch`, so plain
+`rag query` needs no such flag. Expect AI ingest to be slow (~3–4 min/PDF on CPU, plus a
+one-time model download on first run).
 
 With real headings/tables you can raise `RAG_CHUNK_MAX_TOKENS` toward 256–512 for more coherent,
 section-level chunks. The CLIP image-encoder branch remains a documented stub.
