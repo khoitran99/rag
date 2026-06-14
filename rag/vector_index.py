@@ -33,6 +33,12 @@ class VectorIndex:
     def add(self, ids: list[int], vectors: np.ndarray) -> None:
         self._index.add_with_ids(_normalize(vectors), np.asarray(ids, dtype="int64"))
 
+    def remove(self, ids: list[int]) -> None:
+        """Drop the given chunk ids from the index (used when a document is re-ingested)."""
+        if not ids:
+            return
+        self._index.remove_ids(np.asarray(ids, dtype="int64"))
+
     def search(self, query: np.ndarray, k: int) -> list[int]:
         _, ids = self._index.search(_normalize(query), k)
         return [int(i) for i in ids[0] if i != -1]

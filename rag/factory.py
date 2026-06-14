@@ -34,9 +34,17 @@ def _parser(config: Config):
 
 
 def run_ingestion(config: Config) -> int:
-    """Ingest the documents folder and persist the index + metadata to disk."""
+    """Ingest the documents folder and persist the index + metadata to disk.
+
+    Loads any existing index so ingestion is incremental across runs: unchanged files are
+    skipped and only new/changed/removed files alter the persisted store.
+    """
     config.index_path.parent.mkdir(parents=True, exist_ok=True)
-    index = VectorIndex(dim=config.embed_dim)
+    index = (
+        VectorIndex.load(config.index_path)
+        if config.index_path.exists()
+        else VectorIndex(dim=config.embed_dim)
+    )
     store = MetadataStore(config.db_path)
     pipeline = IngestionPipeline(
         parser=_parser(config),

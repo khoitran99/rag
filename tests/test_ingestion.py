@@ -37,7 +37,8 @@ def test_ingest_populates_metadata_with_source_document_and_page(tmp_path):
 
     assert count >= 2
     # Every chunk traces back to the source document and a real page number.
-    indexed = [store.get(i) for i in range(count)]
+    assert store.documents() == ["handbook.pdf"]
+    indexed = [store.get(cid) for cid in store.chunk_ids_for("handbook.pdf")]
     assert all(c.document == "handbook.pdf" for c in indexed)
     assert {c.page for c in indexed} == {1, 2}
     assert any("Expense reports" in c.text for c in indexed)

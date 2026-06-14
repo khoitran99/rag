@@ -34,6 +34,23 @@ class FakeEmbedder:
         return np.asarray(rows, dtype="float32")
 
 
+class CountingEmbedder:
+    """A FakeEmbedder that records how many texts it has embedded.
+
+    Lets incremental-ingestion tests assert that unchanged files are *not* re-embedded —
+    the observable point of hash-based skipping — without reaching into pipeline internals.
+    """
+
+    def __init__(self, dim: int = 16):
+        self._inner = FakeEmbedder(dim=dim)
+        self.dim = dim
+        self.embedded_count = 0
+
+    def embed(self, texts: list[str]) -> np.ndarray:
+        self.embedded_count += len(texts)
+        return self._inner.embed(texts)
+
+
 class FakeGenerator:
     """Echoes the prompt's question and cites the first source, deterministically."""
 
