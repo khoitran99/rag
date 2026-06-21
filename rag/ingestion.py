@@ -10,8 +10,9 @@ disturbs another's ids.
 from __future__ import annotations
 
 import hashlib
-from dataclasses import replace
 from pathlib import Path
+
+from rag.models import Chunk
 
 
 def _content_hash(pdf_path: Path) -> str:
@@ -61,8 +62,13 @@ class IngestionPipeline:
 
         blocks = self._parser.parse(pdf_path)
         chunks = [
-            replace(c, chunk_id=_chunk_id(document, c.chunk_id))
-            for c in self._chunker.chunk(blocks)
+            Chunk(
+                chunk_id=_chunk_id(document, draft.position),
+                document=document,
+                page=draft.page,
+                text=draft.text,
+            )
+            for draft in self._chunker.chunk(blocks)
         ]
         if chunks:
             vectors = self._embedder.embed([c.text for c in chunks])

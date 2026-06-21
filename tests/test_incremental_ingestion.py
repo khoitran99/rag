@@ -27,13 +27,46 @@ def _write(folder, name, text):
 
 
 def _pipeline(tmp_path, embedder):
-    return IngestionPipeline(
+    store = MetadataStore(tmp_path / "meta.sqlite")
+    index = VectorIndex(dim=embedder.dim)
+    pipeline = IngestionPipeline(
         parser=StubParser(),
         chunker=Chunker(max_tokens=512, overlap_tokens=64),
         embedder=embedder,
-        index=VectorIndex(dim=embedder.dim),
-        store=MetadataStore(tmp_path / "meta.sqlite"),
+        index=index,
+        store=store,
     )
+    return pipeline, store, index
+
+
+def test_ingestion_assigns_stable_indexed_ids_from_document_and_draft_position(tmp_path):
+    docs = tmp_path / "documents"
+    _write(docs, "a.pdf", "Original expense policy.")
+
+    embedder = CountingEmbedder(dim=16)
+    store = MetadataStore(tmp_path / "meta.sqlite")
+    index = VectorIndex(dim=embedder.dim)
+    pipeline = IngestionPipeline(
+        parser=StubParser(),
+        chunker=Chunker(max_tokens=512, overlap_tokens=64),
+        embedder=embedder,
+        index=index,
+        store=store,
+    )
+
+    pipeline.ingest(docs)
+    original_a_ids = store.chunk_ids_for("a.pdf")
+
+    _write(docs, "a.pdf", "Updated expense policy.")
+    pipeline.ingest(docs)
+    updated_a_ids = store.chunk_ids_for("a.pdf")
+
+    _write(docs, "b.pdf", "Updated expense policy.")
+    pipeline.ingest(docs)
+
+    assert updated_a_ids == original_a_ids
+    assert [store.get(cid).text for cid in updated_a_ids] == ["Updated expense policy."]
+    assert store.chunk_ids_for("b.pdf") != updated_a_ids
 
 
 def test_reingesting_unchanged_folder_embeds_nothing(tmp_path):
@@ -41,7 +74,7 @@ def test_reingesting_unchanged_folder_embeds_nothing(tmp_path):
     _write(docs, "a.pdf", "Expense reports go in the portal.")
 
     embedder = CountingEmbedder(dim=16)
-    pipeline = _pipeline(tmp_path, embedder)
+    pipeline, _store, _index = _pipeline(tmp_path, embedder)
 
     first = pipeline.ingest(docs)
     assert first >= 1
@@ -59,8 +92,7 @@ def test_adding_a_new_pdf_indexes_only_that_file(tmp_path):
     _write(docs, "a.pdf", "Expense reports go in the portal.")
 
     embedder = CountingEmbedder(dim=16)
-    pipeline = _pipeline(tmp_path, embedder)
-    store = pipeline._store
+    pipeline, store, _index = _pipeline(tmp_path, embedder)
 
     pipeline.ingest(docs)
     embedded_after_first = embedder.embedded_count
@@ -80,8 +112,7 @@ def test_modifying_a_pdf_reindexes_only_that_file(tmp_path):
     _write(docs, "b.pdf", "Travel is reimbursed.")
 
     embedder = CountingEmbedder(dim=16)
-    pipeline = _pipeline(tmp_path, embedder)
-    store = pipeline._store
+    pipeline, store, _index = _pipeline(tmp_path, embedder)
 
     pipeline.ingest(docs)
     embedded_after_first = embedder.embedded_count
@@ -104,9 +135,7 @@ def test_removing_a_pdf_deletes_its_chunks_from_index_and_metadata(tmp_path):
     _write(docs, "b.pdf", "Travel is reimbursed.")
 
     embedder = CountingEmbedder(dim=16)
-    pipeline = _pipeline(tmp_path, embedder)
-    store = pipeline._store
-    index = pipeline._index
+    pipeline, store, index = _pipeline(tmp_path, embedder)
 
     pipeline.ingest(docs)
     b_ids = store.chunk_ids_for("b.pdf")

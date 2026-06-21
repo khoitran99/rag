@@ -11,7 +11,7 @@ class LayoutBlock:
 
     The quick-path parser emits everything as ``kind="body"``; the AI-based parser (AiLayoutParser)
     fills in real headings and tables. Each block self-describes its source so chunking can
-    stay a pure ``[LayoutBlock] -> [Chunk]`` function.
+    stay a pure ``[LayoutBlock] -> [DraftChunk]`` function.
     """
 
     document: str
@@ -29,6 +29,16 @@ class Chunk:
     """
 
     chunk_id: int
+    document: str
+    page: int
+    text: str
+
+
+@dataclass(frozen=True)
+class DraftChunk:
+    """Chunk content and source position before it is embedded and indexed."""
+
+    position: int
     document: str
     page: int
     text: str
