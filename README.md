@@ -43,6 +43,22 @@ one-time model download on first run).
 With real headings/tables you can raise `RAG_CHUNK_MAX_TOKENS` toward 256–512 for more coherent,
 section-level chunks. The CLIP image-encoder branch remains a documented stub.
 
+## Slice 4 — persistent, incremental ingestion
+
+`rag ingest` is **incremental**: each PDF is keyed by a hash of its bytes, so re-running ingest
+skips unchanged files, re-indexes only new or modified ones, and drops the chunks of files
+removed from `documents/`. The FAISS index and SQLite metadata (chunks + per-document hashes)
+persist to disk and reload across restarts, so the cost of parsing/embedding is paid once per
+new or changed document rather than on every run — which matters most with the slow AI parser.
+
+```bash
+.venv/bin/rag ingest      # first run indexes everything
+.venv/bin/rag ingest      # second run does nothing if documents/ is unchanged
+```
+
+Chunk ids are derived from `(document, position)`, so re-indexing one file never disturbs
+another's ids or vectors.
+
 ## Setup
 
 ```bash
