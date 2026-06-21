@@ -20,12 +20,16 @@ A structural unit of a parsed [[Document]] — a heading, a body paragraph, or a
 its source document and page. The quick-path parser emits everything as a `body` block; the
 AI-based parser (Slice 8) fills in real headings and tables. The input to chunking.
 
-### Chunk
+### DraftChunk
 A contiguous piece of a parsed [[Document]] small enough to embed and to fit the LLM context
-window. The unit that gets embedded and indexed. Produced from [[LayoutBlock]]s by structure-aware
-chunking: a heading is kept with its following body, a table is kept intact, blocks on different
-pages are never merged (so [[Citation]]s stay page-accurate), and oversized content is split to a
-token budget with overlap.
+window, with source page and draft position but no indexed identity. Produced from
+[[LayoutBlock]]s by structure-aware chunking: a heading is kept with its following body, a table is
+kept intact, blocks on different pages are never merged (so [[Citation]]s stay page-accurate), and
+oversized content is split to a token budget with overlap.
+
+### Chunk
+An indexed [[DraftChunk]] whose stable `chunk_id` is assigned during ingestion from
+`(document name, draft position)`. The unit that gets embedded, stored in metadata, and indexed.
 
 ### Index
 The local vector store holding one embedding per [[Chunk]], queried by nearest-neighbour

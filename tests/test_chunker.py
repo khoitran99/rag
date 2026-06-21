@@ -1,6 +1,6 @@
 import tiktoken
 
-from rag.models import Chunk, LayoutBlock
+from rag.models import DraftChunk, LayoutBlock
 from rag.chunker import Chunker
 
 _ENC = tiktoken.get_encoding("cl100k_base")
@@ -17,6 +17,21 @@ def test_small_body_block_passes_through_unchanged():
     assert chunks[0].text == "Submit expense reports in the portal."
     assert chunks[0].document == "handbook.pdf"
     assert chunks[0].page == 1
+
+
+def test_chunker_emits_draft_chunk_position_not_indexed_identity():
+    blocks = [
+        LayoutBlock(document="handbook.pdf", page=1, kind="body", text="Alpha."),
+        LayoutBlock(document="handbook.pdf", page=2, kind="body", text="Beta."),
+    ]
+
+    chunks = Chunker(max_tokens=512, overlap_tokens=64).chunk(blocks)
+
+    assert chunks == [
+        DraftChunk(position=0, document="handbook.pdf", page=1, text="Alpha."),
+        DraftChunk(position=1, document="handbook.pdf", page=2, text="Beta."),
+    ]
+    assert not hasattr(chunks[0], "chunk_id")
 
 
 def test_heading_is_grouped_with_following_body_when_it_fits():

@@ -3,14 +3,14 @@
 Rides on the layout structure the parser produces: a heading is kept with the body that
 follows it, a table is kept intact, and only oversized body content is split (with token
 overlap). Size is measured in real tokens (tiktoken cl100k_base) as a proxy for the
-embedder's window. Pure: ``chunk([LayoutBlock]) -> [Chunk]`` with positionally-assigned ids.
+embedder's window. Pure: ``chunk([LayoutBlock]) -> [DraftChunk]`` with draft positions.
 """
 
 from __future__ import annotations
 
 import tiktoken
 
-from rag.models import Chunk, LayoutBlock
+from rag.models import DraftChunk, LayoutBlock
 
 _ENCODING = tiktoken.get_encoding("cl100k_base")
 
@@ -26,13 +26,13 @@ class Chunker:
         self.max_tokens = max_tokens
         self.overlap_tokens = overlap_tokens
 
-    def chunk(self, blocks: list[LayoutBlock]) -> list[Chunk]:
-        chunks: list[Chunk] = []
+    def chunk(self, blocks: list[LayoutBlock]) -> list[DraftChunk]:
+        chunks: list[DraftChunk] = []
         group: list[LayoutBlock] = []
 
         def flush() -> None:
             if group:
-                chunks.extend(self._emit(group, start_id=len(chunks)))
+                chunks.extend(self._emit(group, start_position=len(chunks)))
                 group.clear()
 
         for block in blocks:
@@ -58,13 +58,18 @@ class Chunker:
         flush()
         return chunks
 
-    def _emit(self, group: list[LayoutBlock], start_id: int) -> list[Chunk]:
+    def _emit(self, group: list[LayoutBlock], start_position: int) -> list[DraftChunk]:
         first = group[0]
         joined = self._join(group)
         # Tables are kept intact; everything else is split to the token budget.
         texts = [joined] if first.kind == "table" else self._split_to_budget(joined)
         return [
-            Chunk(chunk_id=start_id + i, document=first.document, page=first.page, text=text)
+            DraftChunk(
+                position=start_position + i,
+                document=first.document,
+                page=first.page,
+                text=text,
+            )
             for i, text in enumerate(texts)
         ]
 
