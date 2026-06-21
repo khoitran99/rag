@@ -12,6 +12,7 @@ from rag.config import Config
 from rag.embedder import OllamaEmbedder
 from rag.generator import OllamaGenerator
 from rag.ingestion import IngestionPipeline
+from rag.knowledge_base import KnowledgeBase
 from rag.metadata_store import MetadataStore
 from rag.parser import PdfParser
 from rag.pipeline import RagPipeline
@@ -40,33 +41,37 @@ def run_ingestion(config: Config) -> int:
     skipped and only new/changed/removed files alter the persisted store.
     """
     config.index_path.parent.mkdir(parents=True, exist_ok=True)
+    config.db_path.parent.mkdir(parents=True, exist_ok=True)
+    index_exists = config.index_path.exists()
     index = (
         VectorIndex.load(config.index_path)
-        if config.index_path.exists()
+        if index_exists
         else VectorIndex(dim=config.embed_dim)
     )
     store = MetadataStore(config.db_path)
+    knowledge_base = KnowledgeBase(index=index, store=store, trust_hashes=index_exists)
     pipeline = IngestionPipeline(
         parser=_parser(config),
         chunker=Chunker(
             max_tokens=config.chunk_max_tokens, overlap_tokens=config.chunk_overlap_tokens
         ),
         embedder=_embedder(config),
-        index=index,
-        store=store,
+        knowledge_base=knowledge_base,
     )
     count = pipeline.ingest(config.documents_dir)
-    index.persist(config.index_path)
-    store.close()
+    knowledge_base.persist(config.index_path)
+    knowledge_base.close()
     return count
 
 
 def load_pipeline(config: Config) -> RagPipeline:
     """Build the query-time pipeline from the persisted index + metadata."""
+    config.db_path.parent.mkdir(parents=True, exist_ok=True)
     index = VectorIndex.load(config.index_path)
     store = MetadataStore(config.db_path)
+    knowledge_base = KnowledgeBase(index=index, store=store)
     retriever = Retriever(
-        embedder=_embedder(config), index=index, store=store, top_k=config.top_k
+        embedder=_embedder(config), knowledge_base=knowledge_base, top_k=config.top_k
     )
     return RagPipeline(
         retriever=retriever,

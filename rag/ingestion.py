@@ -12,6 +12,7 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
+from rag.knowledge_base import KnowledgeBase
 from rag.models import Chunk
 
 
@@ -30,12 +31,26 @@ def _chunk_id(document: str, position: int) -> int:
 
 
 class IngestionPipeline:
-    def __init__(self, *, parser, chunker, embedder, index, store):
+    def __init__(
+        self,
+        *,
+        parser,
+        chunker,
+        embedder,
+        knowledge_base: KnowledgeBase | None = None,
+        index=None,
+        store=None,
+    ):
         self._parser = parser
         self._chunker = chunker
         self._embedder = embedder
         self._index = index
         self._store = store
+        if knowledge_base is None:
+            if index is None or store is None:
+                raise TypeError("knowledge_base or both index and store are required")
+            knowledge_base = KnowledgeBase(index=index, store=store)
+        self._knowledge_base = knowledge_base
 
     def ingest(self, folder: str | Path) -> int:
         """Index new/changed PDFs in `folder`, drop removed ones. Returns chunks (re)indexed."""
@@ -46,19 +61,16 @@ class IngestionPipeline:
         indexed = 0
         for pdf_path in present:
             content_hash = _content_hash(pdf_path)
-            if self._store.hash_of(pdf_path.name) == content_hash:
+            if self._knowledge_base.is_current(pdf_path.name, content_hash):
                 continue  # unchanged -> skip entirely (no parse, no embed)
             indexed += self._reindex(pdf_path, content_hash)
 
-        # Files that vanished from the folder: forget their chunks and vectors.
-        for document in set(self._store.documents()) - present_names:
-            self._drop(document)
+        self._knowledge_base.remove_documents_except(present_names)
 
         return indexed
 
     def _reindex(self, pdf_path: Path, content_hash: str) -> int:
         document = pdf_path.name
-        self._drop(document)  # clear any prior version before re-adding
 
         blocks = self._parser.parse(pdf_path)
         chunks = [
@@ -70,15 +82,10 @@ class IngestionPipeline:
             )
             for draft in self._chunker.chunk(blocks)
         ]
-        if chunks:
-            vectors = self._embedder.embed([c.text for c in chunks])
-            self._index.add(ids=[c.chunk_id for c in chunks], vectors=vectors)
-            self._store.add(chunks)
-        self._store.set_hash(document, content_hash)
-        return len(chunks)
-
-    def _drop(self, document: str) -> None:
-        ids = self._store.chunk_ids_for(document)
-        if ids:
-            self._index.remove(ids)
-        self._store.delete_by_document(document)
+        vectors = self._embedder.embed([c.text for c in chunks]) if chunks else []
+        return self._knowledge_base.replace_document(
+            document=document,
+            chunks=chunks,
+            vectors=vectors,
+            content_hash=content_hash,
+        )
